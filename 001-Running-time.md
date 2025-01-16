@@ -74,7 +74,7 @@ To estimate how long the job **101M_PS8** will run, we can analyze the provided 
 ### Conclusion:
 The job **101M_PS8** is expected to run for approximately **33 minutes** in total, meaning it should finish around **21:55 PM** (9:55 PM). This estimate assumes that the rate of epoch completion remains consistent throughout the job.
 
-## Gemin 2.0 Flash Experimental
+## Gemini 2.0 Flash Experimental
 https://gemini.google.com/app/8cb03dad097aa75a
 
 Here's an estimation of the remaining runtime for job 101M_PS8 (job ID 950888), based on the provided data:
