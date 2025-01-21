@@ -1,0 +1,92 @@
+└── .
+    ├── .git
+    │   ├── HEAD
+    │   ├── branches
+    │   ├── config
+    │   ├── description
+    │   ├── hooks
+    │   │   ├── applypatch-msg.sample
+    │   │   ├── commit-msg.sample
+    │   │   ├── fsmonitor-watchman.sample
+    │   │   ├── post-update.sample
+    │   │   ├── pre-applypatch.sample
+    │   │   ├── pre-commit.sample
+    │   │   ├── pre-merge-commit.sample
+    │   │   ├── pre-push.sample
+    │   │   ├── pre-rebase.sample
+    │   │   ├── pre-receive.sample
+    │   │   ├── prepare-commit-msg.sample
+    │   │   ├── push-to-checkout.sample
+    │   │   └── update.sample
+    │   ├── index
+    │   ├── info
+    │   │   └── exclude
+    │   ├── logs
+    │   │   ├── HEAD
+    │   │   └── refs
+    │   │       ├── heads
+    │   │       │   └── master
+    │   │       └── remotes
+    │   │           └── origin
+    │   │               └── HEAD
+    │   ├── objects
+    │   │   ├── info
+    │   │   └── pack
+    │   │       ├── pack-fcd670e4be87488691835c1cf9866a0dab67c11e.idx
+    │   │       └── pack-fcd670e4be87488691835c1cf9866a0dab67c11e.pack
+    │   ├── packed-refs
+    │   └── refs
+    │       ├── heads
+    │       │   └── master
+    │       ├── remotes
+    │       │   └── origin
+    │       │       └── HEAD
+    │       └── tags
+    ├── .gitattributes
+    ├── .gitignore
+    ├── .python-version
+    ├── LICENSE
+    ├── README.md
+    ├── assets
+    │   ├── gpt2_124M_loss.png
+    │   └── nanogpt.jpg
+    ├── bench.py
+    ├── chatgpt_dir_tree.py
+    ├── chatgpt_dir_tree.txt
+    ├── claude_dir_tree.py
+    ├── claude_dir_tree.txt
+    ├── config
+    │   ├── eval_gpt2.py
+    │   ├── eval_gpt2_large.py
+    │   ├── eval_gpt2_medium.py
+    │   ├── eval_gpt2_xl.py
+    │   ├── finetune_shakespeare.py
+    │   ├── train_gpt2.py
+    │   └── train_shakespeare_char.py
+    ├── configurator.py
+    ├── data
+    │   ├── openwebtext
+    │   │   ├── prepare.py
+    │   │   └── readme.md
+    │   ├── shakespeare
+    │   │   ├── input.txt
+    │   │   ├── prepare.py
+    │   │   └── readme.md
+    │   └── shakespeare_char
+    │       ├── input.txt
+    │       ├── meta.pkl
+    │       ├── prepare.py
+    │       ├── readme.md
+    │       ├── train.bin
+    │       └── val.bin
+    ├── deepseek_dir_tree.py
+    ├── deepseek_dir_tree.txt
+    ├── gemini_dir_tree.py
+    ├── gemini_dir_tree.txt
+    ├── grok_dir_tree.py
+    ├── grok_dir_tree.txt
+    ├── model.py
+    ├── sample.py
+    ├── scaling_laws.ipynb
+    ├── train.py
+    └── transformer_sizing.ipynb

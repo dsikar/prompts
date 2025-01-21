@@ -1,0 +1,24 @@
+nanoGPT/
+  .git/
+    info/
+    branches/
+    refs/
+      heads/
+      remotes/
+        origin/
+      tags/
+    logs/
+      refs/
+        heads/
+        remotes/
+          origin/
+    objects/
+      info/
+      pack/
+    hooks/
+  data/
+    shakespeare_char/
+    shakespeare/
+    openwebtext/
+  config/
+  assets/
