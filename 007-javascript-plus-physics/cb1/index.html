@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falling Letters Animation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border: 1px solid #333;
+            background-color: #222; /* Slightly lighter dark background for contrast */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="letterCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('letterCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let letters = [];
+        const gravity = 9.8 * 10; // Scale gravity for pixel-based simulation (100 pixels ~ 1 meter)
+        const density = 1000; // kg/m^3 (Water-like) - scaled down
+        const damping = 0.95; // Energy loss on collision (0.9 = 10% loss)
+        const groundFriction = 0.8;  // Horizontal friction when touching ground
+        const letterFrequency = 500; // milliseconds between new letter spawns (0.5 seconds)
+        let lastLetterTime = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9; // Slightly less than full width for aesthetics
+            canvas.height = window.innerHeight * 0.9;  // Slightly less than full height
+        }
+
+        function Letter(x, char) {
+            this.char = char;
+            this.size = Math.random() * 30 + 20; // Random size between 20 and 50
+            this.font = `${this.size}px sans-serif`; // Set the initial font for measuring
+
+            ctx.font = this.font;
+            const metrics = ctx.measureText(this.char);
+            this.width = metrics.width;
+            this.height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+            this.x = x - this.width / 2; // Center the letter based on width
+            this.y = -this.height;
+            this.vx = (Math.random() - 0.5) * 2; // Small initial horizontal velocity
+            this.vy = 0;
+            this.mass = density * (this.width * this.height) * 0.00001;  // Scaled down for pixel space
+            this.color = `hsl(${Math.random() * 360}, 100%, 50%)`; // Random bright color
+
+              // Simple shape approximation for collision detection (rectangle)
+            this.getBounds = () => {
+               return {
+                   left: this.x,
+                   right: this.x + this.width,
+                   top: this.y,
+                   bottom: this.y + this.height
+               };
+            };
+
+        }
+
+
+        Letter.prototype.update = function(deltaTime) {
+            // Apply gravity
+            this.vy += gravity * deltaTime;
+
+            // Update position
+            this.x += this.vx;
+            this.y += this.vy * deltaTime;
+
+
+            // Ground collision
+            if (this.y + this.height > canvas.height) {
+                this.y = canvas.height - this.height;
+                this.vy *= -damping;  // Bounce and lose energy
+                this.vx *= groundFriction;  // Apply ground friction
+                if (Math.abs(this.vy) < 1) this.vy = 0; // Stop bouncing when velocity is very low
+            }
+
+            // Left/Right wall collision
+            if (this.x < 0) {
+                this.x = 0;
+                this.vx *= -damping;
+            } else if (this.x + this.width > canvas.width) {
+                this.x = canvas.width - this.width;
+                this.vx *= -damping;
+            }
+
+
+            // Letter-Letter collision detection
+            for (let other of letters) {
+              if (other === this) continue; // Skip self-collision
+
+              const bounds1 = this.getBounds();
+              const bounds2 = other.getBounds();
+
+              // Basic AABB collision check (Axis-Aligned Bounding Box)
+              if (bounds1.right > bounds2.left && bounds1.left < bounds2.right &&
+                  bounds1.bottom > bounds2.top && bounds1.top < bounds2.bottom) {
+
+                // Calculate overlap in x and y directions
+                const overlapX = Math.min(bounds1.right, bounds2.right) - Math.max(bounds1.left, bounds2.left);
+                const overlapY = Math.min(bounds1.bottom, bounds2.bottom) - Math.max(bounds1.top, bounds2.top);
+
+                // Resolve collision based on smaller overlap (push out in that direction)
+                if (overlapX < overlapY) {
+                    const dx = bounds1.left + this.width/2 - (bounds2.left + other.width/2);
+                    const sign = Math.sign(dx) || 1;  // handle case where dx is 0
+
+                    // Simple impulse exchange (based on relative velocity, like billiards)
+                    const relativeVx = this.vx - other.vx;
+                    this.vx -= (relativeVx * other.mass / (this.mass + other.mass))*damping;
+                    other.vx += (relativeVx * this.mass / (this.mass + other.mass))*damping;
+                    // Push apart
+                    this.x += sign * overlapX/2;
+                    other.x -= sign * overlapX/2;
+
+                } else {
+
+                    const dy = bounds1.top + this.height/2 - (bounds2.top + other.height/2); // difference of centers.
+                    const sign = Math.sign(dy) || 1;
+
+                    // Simple impulse exchange
+                    const relativeVy = this.vy - other.vy;
+                    this.vy -= (relativeVy * other.mass / (this.mass + other.mass)) * damping;
+                    other.vy += (relativeVy * this.mass / (this.mass + other.mass)) * damping;
+                      // Push apart
+                    this.y += sign * overlapY/2;
+                    other.y -= sign * overlapY/2;
+
+
+                }
+              }
+            }
+        };
+
+
+
+        Letter.prototype.draw = function() {
+            ctx.fillStyle = this.color;
+            ctx.font = this.font;
+            ctx.fillText(this.char, this.x, this.y + this.height); // Draw from the baseline
+        };
+
+
+        function createLetter() {
+            const char = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // Random uppercase letter
+            const x = Math.random() * canvas.width;
+            letters.push(new Letter(x, char));
+        }
+
+        let lastFrameTime = performance.now();
+
+        function animate(currentTime) {
+            const deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
+            lastFrameTime = currentTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Create new letters at a set frequency
+            if (currentTime - lastLetterTime > letterFrequency) {
+                createLetter();
+                lastLetterTime = currentTime;
+            }
+
+            // Update and draw letters
+            for (let i = letters.length - 1; i >= 0; i--) {
+                letters[i].update(deltaTime);
+                letters[i].draw();
+
+                // Remove letters that are very still and at the bottom (optimization)
+                if (letters[i].y + letters[i].height >= canvas.height && Math.abs(letters[i].vy) < 0.1 && Math.abs(letters[i].vx) < 0.1 ) {
+                  letters.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        resizeCanvas(); // Initial resize
+        window.addEventListener('resize', resizeCanvas);
+        animate(performance.now());
+    </script>
+</body>
+</html>

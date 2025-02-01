@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Falling Letters</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #222;
+    font-family: monospace;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Set canvas size
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Constants
+const GRAVITY = 9.8; // m/s^2
+const DENSITY = 1000; // kg/m^3 (similar to water)
+const PIXEL_TO_METER = 0.002; // Roughly approximate conversion
+const RESTITUTION = 0.4; // Coefficient of restitution (bounciness)
+const FRICTION = 0.8;
+const AIR_FRICTION = 0.01;
+const MAX_LETTERS = 100; 
+
+// Letter properties
+const MIN_FONT_SIZE = 16; // px
+const MAX_FONT_SIZE = 48; // px
+const LETTER_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+// Letter object
+class Letter {
+  constructor(x, y, char, fontSize) {
+    this.char = char;
+    this.fontSize = fontSize;
+    this.font = `${this.fontSize}px monospace`;
+    ctx.font = this.font;
+    this.width = ctx.measureText(this.char).width;
+    this.height = this.fontSize;
+    this.x = x; // in pixels
+    this.y = y; // in pixels
+    this.vx = 0; // in pixels/s
+    this.vy = 0; // in pixels/s
+    this.mass = this.fontSize * this.width * PIXEL_TO_METER**2 * DENSITY;
+    this.rotation = 0;
+    this.angularVelocity = 0;
+    this.color = `hsl(${Math.random() * 360}, 100%, 50%)`; 
+
+  }
+
+  update(dt) {
+    // Apply gravity
+    this.vy += GRAVITY * dt / PIXEL_TO_METER;
+
+    // Apply air friction
+    this.vx -= this.vx * AIR_FRICTION;
+    this.vy -= this.vy * AIR_FRICTION;
+    this.angularVelocity -= this.angularVelocity * AIR_FRICTION;
+
+
+    // Update position based on velocity
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    this.rotation += this.angularVelocity * dt;
+
+    // Bounce off the ground
+    if (this.y + this.height > canvas.height) {
+      this.y = canvas.height - this.height;
+      this.vy *= -RESTITUTION;
+      this.vx *= FRICTION; // Apply friction on horizontal bounce
+      this.angularVelocity *= FRICTION;
+    }
+
+    // Bounce off the sides
+    if (this.x < 0) {
+      this.x = 0;
+      this.vx *= -RESTITUTION;
+      this.angularVelocity *= FRICTION;
+
+    } else if (this.x + this.width > canvas.width) {
+      this.x = canvas.width - this.width;
+      this.vx *= -RESTITUTION;
+      this.angularVelocity *= FRICTION;
+
+    }
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x + this.width/2, this.y + this.height/2);
+    ctx.rotate(this.rotation);
+    ctx.fillStyle = this.color;
+    ctx.font = this.font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.char, 0, 0);
+    ctx.restore();
+  }
+}
+
+// Array to store letters
+let letters = [];
+
+// Function to generate a new letter
+function createLetter() {
+  const fontSize = Math.random() * (MAX_FONT_SIZE - MIN_FONT_SIZE) + MIN_FONT_SIZE;
+  const char = LETTER_SET[Math.floor(Math.random() * LETTER_SET.length)];
+  const x = Math.random() * (canvas.width - 2 * MAX_FONT_SIZE) + MAX_FONT_SIZE; // Ensure not off-screen
+  const y = -fontSize; // Start above the screen
+
+  letters.push(new Letter(x, y, char, fontSize));
+
+  if (letters.length > MAX_LETTERS) {
+    letters.shift();
+  }
+}
+
+// Function for broad phase collision detection (simple AABB for now)
+function broadPhaseCollisionDetection(letter1, letter2) {
+    return !(letter1.x + letter1.width < letter2.x ||
+             letter1.x > letter2.x + letter2.width ||
+             letter1.y + letter1.height < letter2.y ||
+             letter1.y > letter2.y + letter2.height);
+}
+
+// Function for narrow phase collision detection (simple approximation for now)
+function narrowPhaseCollisionDetection(letter1, letter2) {
+    // Basic approximate collision, ideally use a more accurate method like SAT or GJK
+    const dx = (letter1.x + letter1.width / 2) - (letter2.x + letter2.width / 2);
+    const dy = (letter1.y + letter1.height / 2) - (letter2.y + letter2.height / 2);
+    const combinedHalfWidths = (letter1.width + letter2.width) / 2;
+    const combinedHalfHeights = (letter1.height + letter2.height) / 2;
+
+    if (Math.abs(dx) < combinedHalfWidths && Math.abs(dy) < combinedHalfHeights) {
+        const overlapX = combinedHalfWidths - Math.abs(dx);
+        const overlapY = combinedHalfHeights - Math.abs(dy);
+
+        return {
+            collided: true,
+            overlapX: overlapX,
+            overlapY: overlapY,
+            normalX: overlapX > overlapY ? 0 : (dx > 0 ? 1 : -1), 
+            normalY: overlapX > overlapY ? (dy > 0 ? 1 : -1) : 0
+        };
+    }
+
+    return { collided: false };
+}
+
+// Function to handle collision between two letters
+function handleCollision(letter1, letter2, collisionData) {
+
+    const { normalX, normalY, overlapX, overlapY } = collisionData;
+    const relativeVelocityX = letter2.vx - letter1.vx;
+    const relativeVelocityY = letter2.vy - letter1.vy;
+    const relativeVelocityNormal = relativeVelocityX * normalX + relativeVelocityY * normalY;
+
+    if(relativeVelocityNormal > 0) return;
+
+    const impulse = -(1+RESTITUTION) * relativeVelocityNormal / (1/letter1.mass + 1/letter2.mass);
+
+    const impulseX = impulse * normalX;
+    const impulseY = impulse * normalY;
+
+    letter1.vx -= impulseX / letter1.mass;
+    letter1.vy -= impulseY / letter1.mass;
+    letter2.vx += impulseX / letter2.mass;
+    letter2.vy += impulseY / letter2.mass;
+
+    const tangentX = -normalY;
+    const tangentY = normalX;
+    const relativeVelocityTangent = relativeVelocityX * tangentX + relativeVelocityY * tangentY;
+
+    const frictionImpulse = -relativeVelocityTangent / (1/letter1.mass + 1/letter2.mass) * FRICTION;
+
+    letter1.vx -= frictionImpulse * tangentX / letter1.mass;
+    letter1.vy -= frictionImpulse * tangentY / letter1.mass;
+    letter2.vx += frictionImpulse * tangentX / letter2.mass;
+    letter2.vy += frictionImpulse * tangentY / letter2.mass;
+
+    // Add some angular velocity based on collision
+    letter1.angularVelocity += (Math.random() - 0.5) * 0.1;
+    letter2.angularVelocity += (Math.random() - 0.5) * 0.1;
+
+    // Positional correction to prevent sinking
+    const correction = Math.max(overlapX, overlapY) * 0.8;
+    letter1.x -= correction * normalX / 2;
+    letter1.y -= correction * normalY / 2;
+    letter2.x += correction * normalX / 2;
+    letter2.y += correction * normalY / 2;
+}
+
+// Animation loop
+let lastTimestamp = 0;
+function animate(timestamp) {
+  const dt = (timestamp - lastTimestamp) / 1000; // Convert to seconds
+  lastTimestamp = timestamp;
+
+  // Clear the canvas
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Create new letters periodically
+  if (Math.random() < 0.05) {
+    createLetter();
+  }
+
+  // Handle collisions
+  for (let i = 0; i < letters.length; i++) {
+    for (let j = i + 1; j < letters.length; j++) {
+        if (broadPhaseCollisionDetection(letters[i], letters[j])) {
+            const collisionData = narrowPhaseCollisionDetection(letters[i], letters[j]);
+            if (collisionData.collided) {
+                handleCollision(letters[i], letters[j], collisionData);
+            }
+        }
+    }
+  }
+
+  // Update and draw letters
+  for (let i = letters.length - 1; i >= 0; i--) {
+    letters[i].update(dt);
+    letters[i].draw();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// Start the animation
+animate(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; overflow: hidden; background: black; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<script>
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+document.body.appendChild(canvas);
+
+let letters = [];
+let lastTime = 0;
+const gravity = 9.8 * 100; // px/s² (assuming 1m = 100px)
+const density = 0.001; // kg/px² (adjusted for visual effect)
+
+class Letter {
+    constructor() {
+        this.char = String.fromCharCode(65 + Math.random() * 58);
+        this.size = Math.random() * 30 + 20;
+        this.x = Math.random() * canvas.width;
+        this.y = -this.size;
+        this.vx = 0;
+        this.vy = 0;
+        this.mass = this.size * density;
+        this.setMetrics();
+    }
+
+    setMetrics() {
+        ctx.save();
+        ctx.font = `${this.size}px Arial`;
+        const m = ctx.measureText(this.char);
+        this.width = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+        this.height = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+        ctx.restore();
+    }
+
+    getBounds() {
+        return {
+            left: this.x - this.width/2,
+            right: this.x + this.width/2,
+            top: this.y - this.height/2,
+            bottom: this.y + this.height/2
+        };
+    }
+
+    update(deltaTime) {
+        // Apply forces
+        this.vy += gravity * deltaTime;
+        
+        // Update position
+        this.x += this.vx * deltaTime;
+        this.y += this.vy * deltaTime;
+
+        // Screen boundaries
+        const bounds = this.getBounds();
+        if (bounds.left < 0) {
+            this.x = this.width/2;
+            this.vx *= -0.5;
+        }
+        if (bounds.right > canvas.width) {
+            this.x = canvas.width - this.width/2;
+            this.vx *= -0.5;
+        }
+        if (bounds.bottom > canvas.height) {
+            this.y = canvas.height - this.height/2;
+            this.vy *= -0.5;
+            this.vx *= 0.8;
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.font = `${this.size}px Arial`;
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.char, this.x, this.y);
+        ctx.restore();
+    }
+}
+
+function checkCollisions() {
+    for (let i = 0; i < letters.length; i++) {
+        for (let j = i + 1; j < letters.length; j++) {
+            const a = letters[i];
+            const b = letters[j];
+            const aBounds = a.getBounds();
+            const bBounds = b.getBounds();
+
+            if (aBounds.left < bBounds.right && 
+                aBounds.right > bBounds.left &&
+                aBounds.top < bBounds.bottom && 
+                aBounds.bottom > bBounds.top) {
+                
+                // Collision resolution
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const distance = Math.hypot(dx, dy);
+                const overlap = (a.size/2 + b.size/2) - distance;
+                
+                if (overlap > 0) {
+                    // Position correction
+                    const adjustX = (overlap * dx/distance) * 0.5;
+                    const adjustY = (overlap * dy/distance) * 0.5;
+                    a.x -= adjustX;
+                    a.y -= adjustY;
+                    b.x += adjustX;
+                    b.y += adjustY;
+
+                    // Velocity exchange
+                    const nx = dx/distance;
+                    const ny = dy/distance;
+                    const p = 2 * (a.vx * nx + a.vy * ny - b.vx * nx - b.vy * ny) / (a.mass + b.mass);
+                    
+                    a.vx -= p * b.mass * nx;
+                    a.vy -= p * b.mass * ny;
+                    b.vx += p * a.mass * nx;
+                    b.vy += p * a.mass * ny;
+                }
+            }
+        }
+    }
+}
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+function animate(timestamp) {
+    const deltaTime = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    // Spawn new letters
+    if (Math.random() < 0.1) letters.push(new Letter());
+
+    // Update physics
+    letters.forEach(letter => letter.update(deltaTime));
+    checkCollisions();
+
+    // Clean up off-screen letters
+    letters = letters.filter(l => l.y < canvas.height + l.size);
+
+    // Draw frame
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    letters.forEach(letter => letter.draw());
+
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Falling Letters</title>
+<style>
+  body { margin: 0; overflow: hidden; background-color: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="myCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const GRAVITY = 0.3; // Simplified gravity for visual appeal
+const MAX_LETTERS = 100;
+const LETTER_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+class Letter {
+  constructor(x, y, char, size) {
+    this.char = char;
+    this.size = size;
+    this.x = x;
+    this.y = y;
+    this.vy = 0; // Vertical velocity
+    this.vx = (Math.random() - 0.5) * 2; // Horizontal velocity for slight drift
+    this.rotation = 0;
+    this.angularVelocity = (Math.random() - 0.5) * 0.05; // Random rotation speed
+    this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+  }
+
+  update() {
+    this.vy += GRAVITY; // Apply gravity
+    this.y += this.vy;
+    this.x += this.vx;
+    this.rotation += this.angularVelocity;
+
+    // Bounce off the ground
+    if (this.y + this.size > canvas.height) {
+      this.y = canvas.height - this.size;
+      this.vy = -this.vy * 0.7; // Bounce with energy loss
+      this.vx *= 0.9; // Apply friction
+      this.angularVelocity *= 0.9;
+    }
+
+    // Wrap around screen sides
+    if (this.x < 0) this.x = canvas.width;
+    if (this.x > canvas.width) this.x = 0;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x + this.size / 2, this.y + this.size / 2);
+    ctx.rotate(this.rotation);
+    ctx.font = `${this.size}px Arial`;
+    ctx.fillStyle = this.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.char, 0, 0);
+    ctx.restore();
+  }
+}
+
+let letters = [];
+
+function createLetter() {
+  if (letters.length >= MAX_LETTERS) return;
+  const size = Math.random() * 30 + 10; // Random size
+  const char = LETTER_SET[Math.floor(Math.random() * LETTER_SET.length)];
+  const x = Math.random() * canvas.width;
+  
+  letters.push(new Letter(x, -size, char, size));
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Create new letters periodically
+  if (Math.random() < 0.1) createLetter();
+
+  for (let i = letters.length - 1; i >= 0; i--) {
+    letters[i].update();
+    letters[i].draw();
+    
+    // Remove letters that are out of view
+    if (letters[i].y > canvas.height + 100) {
+      letters.splice(i, 1);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+animate();
+</script>
+</body>
+</html>
